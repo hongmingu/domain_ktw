@@ -39,6 +39,7 @@ def modify_and_move_files(original_dir, target_dir):
                         new_f.write(lines[i])
                     # 나머지 줄은 처리
                     for line in lines[5:]:
+                        line = line.replace("요:", "요").replace("다:", "다")
                         # '.'로 분할하고, 각 문장에 줄바꿈을 추가하여 다시 합침
                         if line.startswith("#"):
                             new_f.write(line)
