@@ -18,6 +18,13 @@ const Custom404 = () => (
     <h2>7. 경기장 방문</h2>
     <p>경기 당일에는 티켓과 신분증을 지참하고, 경기 시작 시간 이전에 경기장에 도착해야 합니다...</p>
     <p>이상으로 스포츠 티켓 예매 방법에 대해 설명하였습니다. 올바른 절차를 따르면, 관객은 스포츠 경기를 안전하고 편안하게 즐길 수 있습니다.</p>
+    <h2>예매할 수 있는 사이트 목록</h2>
+    <ul>
+      <li><a href="https://www.playkfa.com/" target="_blank" rel="noopener noreferrer">한국축구협회(KFA)</a></li>
+      <li><a href="https://ticket.interpark.com/" target="_blank" rel="noopener noreferrer">인터파크 티켓</a></li>
+      <li><a href="https://www.ticketlink.co.kr/home" target="_blank" rel="noopener noreferrer">티켓링크</a></li>
+    </ul>
+    <p><a href="https://koreateam.win/index.html" target="_blank" rel="noopener noreferrer">더 자세한 스포츠 정보 보러가기</a></p>
   </div>
 );
 
