@@ -1,0 +1,247 @@
+---
+title: 축구 경기시 동선과 데이터 분석을 위한 앱 만들기
+description: 동선과 데이터를 분석해서 부상을 예방하는 앱을 만들어보자
+date: July 31 2023
+---
+선수의 움직임을 추적하고 데이터를 분석하려면 센서 데이터를 수집하고 분석하는 복잡한 시스템이 필요하다. 
+
+GPS, 가속도계, 자이로스코프같은 센서를 활용하여 선수의 위치 움직임 방향 등을 기록하자.
+
+
+## 가속도계센서로 움직임 추적
+
+```
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import android.os.Bundle
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+
+class MainActivity : AppCompatActivity(), SensorEventListener {
+    private lateinit var sensorManager: SensorManager
+    private var accelerometer: Sensor? = null
+
+    private lateinit var xValueView: TextView
+    private lateinit var yValueView: TextView
+    private lateinit var zValueView: TextView
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        xValueView = findViewById(R.id.xValue)
+        yValueView = findViewById(R.id.yValue)
+        zValueView = findViewById(R.id.zValue)
+
+        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        accelerometer?.also { accelerometer ->
+            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        sensorManager.unregisterListener(this)
+    }
+
+    override fun onSensorChanged(event: SensorEvent) {
+        if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
+            xValueView.text = "X Value: ${event.values[0]}"
+            yValueView.text = "Y Value: ${event.values[1]}"
+            zValueView.text = "Z Value: ${event.values[2]}"
+        }
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+        // 변화시 콜백함수를 넣어주자.
+    }
+}
+
+```
+
+선수가 디바이스를 착용하고 있을 때 가속도계 센서로 데이터를 수집한다.
+
+근데 실제 위치를 파악하는 것은 조금 어려우므로 GPS를 이용하자
+
+## 현재 위치 확인하기
+
+```
+import android.Manifest
+import android.content.pm.PackageManager
+import android.location.Location
+import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationResult
+
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private lateinit var locationCallback: LocationCallback
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
+        locationCallback = object : LocationCallback() {
+            override fun onLocationResult(locationResult: LocationResult?) {
+                locationResult ?: return
+                for (location in locationResult.locations){
+                    // Update UI with location data
+                    // ...
+                }
+            }
+        }
+
+        startLocationUpdates()
+    }
+
+    private fun startLocationUpdates() {
+        // Create the location request to start receiving updates
+        val locationRequest = LocationRequest().apply {
+            interval = 10000
+            fastestInterval = 5000
+            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+        }
+
+        // Check permission
+        if (ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return
+        }
+
+        // Request location updates
+        fusedLocationClient.requestLocationUpdates(locationRequest,
+            locationCallback,
+            null /* Looper */)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        stopLocationUpdates()
+    }
+
+    private fun stopLocationUpdates() {
+        fusedLocationClient.removeLocationUpdates(locationCallback)
+    }
+}
+
+```
+아래는 GPS 센서를 사용하여 사용자의 위치를 추적하는 간단한 안드로이드 코드 예제를 만들어봤따.
+
+ 이 코드는 사용자의 현재 위치를 추적하고 위치가 변경될 때마다 업데이트를 제공하게 되어있다.
+이 예제에서는 FusedLocationProviderClient를 사용하여 위치 업데이트를 요청하고 LocationCallback을 사용하여 위치 업데이트를 받는다. 
+이 코드는 사용자의 위치를 지속적으로 추적하고 위치가 변경될 때마다 업데이트한다.
+
+
+이제 특정 동선을 기록하고 시각화해보도록한다.
+
+## 동선 시각화
+
+동선은 csv로 저장한다
+
+```
+import pandas as pd
+
+# Load GPS data
+data = pd.read_csv('gps_data.csv')
+
+# DataFrame 이용
+print(data.head())
+
+```
+
+위도와 경도로 동선을 표시한다.
+
+```
+import matplotlib.pyplot as plt
+
+# Plot the 선수 movement
+plt.plot(data['Longitude'], data['Latitude'])
+
+# Show the plot
+plt.show()
+
+```
+
+이 다음엔 시각화를 좀더 업데이트한다.
+
+matplotlib을 이용한다.
+
+```
+import matplotlib.pyplot as plt
+
+# Load GPS 데이터
+data = pd.read_csv('gps_data.csv')
+
+# Create
+fig, ax = plt.subplots()
+
+# Set
+ax.set_title('Player Movement Over Time')
+ax.set_xlabel('Longitude')
+ax.set_ylabel('Latitude')
+
+# Set 
+ax.set_xlim([min(data['Longitude']), max(data['Longitude'])])
+ax.set_ylim([min(data['Latitude']), max(data['Latitude'])])
+
+# Use
+ax.scatter(data['Longitude'], data['Latitude'], alpha=0.5)
+
+# Use
+ax.plot(data['Longitude'], data['Latitude'], color='red', alpha=0.5)
+
+# Display the plot
+plt.show()
+
+```
+
+산점도로 표시했다.
+
+
+산점도 말고 열그래프로 표시하려고 하면 이렇게할 수 있다.
+
+```
+import matplotlib.pyplot as plt
+
+# 불러오기 GPS data
+data = pd.read_csv('gps_data.csv')
+
+# 생성 a new column for the hour of the day
+data['Hour'] = data['Timestamp'].dt.hour
+
+# 숫자세기 the number of data points in each hour
+data_counts = data['Hour'].value_counts().sort_index()
+
+# 생성 a figure and axis
+fig, ax = plt.subplots()
+
+# 설정 the title and labels
+ax.set_title('Player Activity Over Time')
+ax.set_xlabel('Hour of the Day')
+ax.set_ylabel('Number of Data Points')
+
+# 생성 a bar plot
+ax.bar(data_counts.index, data_counts.values, color='blue', alpha=0.5)
+
+# 보여주기 the plot
+plt.show()
+
+```
+
+이 예제는 타임스탬프가 있다고 상정했다.
